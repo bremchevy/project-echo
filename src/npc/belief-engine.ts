@@ -63,7 +63,7 @@ export function resolveBeliefs(
         const contribution =
           (memory.claim.polarity ? 1 : -1) * evidenceWeight(memory, trust);
         logOdds += contribution;
-        (contribution >= 0 ? supporting : contradicting).push({
+        (memory.claim.polarity ? supporting : contradicting).push({
           id: memory.id,
           version: memory.version,
         });

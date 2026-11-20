@@ -17,6 +17,70 @@ const testimony = (id: string, polarity: boolean, source: string) => ({
   perceivedKind: 'testimony' as const,
 });
 describe('pure belief engine', () => {
+  it.each([0.2, 0.5])(
+    'keeps a denial traceable at faction reliability %s',
+    (reliability) => {
+      let state = reduce(
+        emptyState(),
+        { type: 'FactionInteraction', factionId: 'A', reliability: 0.8 },
+        'trust-a',
+      );
+      state = reduce(
+        state,
+        { type: 'FactionInteraction', factionId: 'B', reliability },
+        'trust-b',
+      );
+      state = reduce(
+        state,
+        {
+          type: 'TestimonyReceived',
+          memoryId: 'a',
+          claim: murder,
+          factionId: 'A',
+        },
+        'accusation',
+      );
+      state = reduce(
+        state,
+        {
+          type: 'TestimonyReceived',
+          memoryId: 'b',
+          claim: { ...murder, polarity: false },
+          factionId: 'B',
+        },
+        'denial',
+      );
+      const belief = state.beliefs[propositionKey(murder)];
+      expect(belief.supporting).toEqual([{ id: 'a', version: 1 }]);
+      expect(belief.contradicting).toEqual([{ id: 'b', version: 1 }]);
+      expect(belief.contradiction).toBe(true);
+      expect(belief.probability).toBe(reliability === 0.2 ? 0.94117647 : 0.8);
+      const answer = interrogate(state, {
+        interrogatorId: 'detective',
+        question: propositionKey(murder),
+      });
+      expect(answer.answer).toContain(
+        'Faction B told me the player did not commit the murder',
+      );
+      expect(answer.acknowledgedContradictions).toEqual([
+        { id: 'b', version: 1 },
+      ]);
+      expect(answer.citedMemories).toContainEqual({ id: 'b', version: 1 });
+    },
+  );
+  it('does not label agreeing claims as contradictory merely because source trust differs', () => {
+    const belief = resolveBeliefs(
+      [testimony('a', true, 'A'), testimony('b', true, 'B')],
+      { A: 0.8, B: 0.2 },
+    )[propositionKey(murder)];
+    expect(belief.supporting).toEqual([
+      { id: 'a', version: 1 },
+      { id: 'b', version: 1 },
+    ]);
+    expect(belief.contradicting).toEqual([]);
+    expect(belief.contradiction).toBe(false);
+    expect(belief.probability).toBe(0.5);
+  });
   it('handles empty memories', () =>
     expect(resolveBeliefs([], {})).toEqual({}));
   it('weighs source reliability and records contradictions', () => {
