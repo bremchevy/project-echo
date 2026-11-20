@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+}
+model Event {
+  id String @id @db.Uuid
+  globalPosition BigInt @unique @default(autoincrement()) @map("global_position")
+  aggregateId String @map("aggregate_id")
+  aggregateType String @map("aggregate_type")
+  version Int
+  eventType String @map("event_type")
+  payload Json
+  metadata Json
+  idempotencyKey String @unique @map("idempotency_key")
+  occurredAt DateTime @db.Timestamptz @map("occurred_at")
+  recordedAt DateTime @default(now()) @db.Timestamptz @map("recorded_at")
+  @@unique([aggregateId, version])
+  @@map("events")
+}
+model Stream {
+  aggregateId String @id @map("aggregate_id")
+  aggregateType String @map("aggregate_type")
+  version Int
+  @@map("streams")
+}
+model NpcState {
+  npcId String @id @map("npc_id")
+  state Json
+  version Int
+  @@map("npc_state")
+}
+model WorldState {
+  worldId String @id @map("world_id")
+  state Json
+  version Int
+  @@map("world_state")
+}
