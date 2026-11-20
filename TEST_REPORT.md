@@ -1,77 +1,12 @@
-# Test report
+# Verification report
 
-Environment: Ubuntu, Node v20.20.2, npm 10.8.2, PostgreSQL 16 in Docker.
+Environment: Node v20.20.2, PostgreSQL 16 in Docker, Prisma 7.10.1, Vitest 4.1.12.
 
-All output blocks below are copied verbatim from captured stdout/stderr; no lines inside them have been edited. The initial failure was a test fixture that accidentally spread testimony-only fields into a strict faction event. The fixture was corrected, not the validation behavior. Final checks ran after docker compose down -v and docker compose up -d --wait, including migration deployment by Vitest global setup.
+The database volume was removed with `docker compose down -v` and recreated with `docker compose up -d --wait` immediately before this verification. Global setup applied both committed migrations. All four commands below exited with status 0; no tests failed in this rework verification.
 
-## Initial test run (exit 1)
+Every terminal block is copied verbatim, including whitespace, from its captured stdout/stderr. TEST_REPORT.md is excluded from Prettier to preserve that output.
 
-```text
-
-> project-echo@1.0.0 test
-> vitest run
-
-
- RUN  v4.1.12 /home/ubuntu/repos/project-echo
-
-Environment variables loaded from .env
-Prisma schema loaded from prisma/schema.prisma
-Datasource "db": PostgreSQL database "echo", schema "public" at "localhost:54329"
-
-1 migration found in prisma/migrations
-
-Applying migration `202611190001_init`
-
-The following migration(s) have been applied:
-
-migrations/
-  └─ 202611190001_init/
-    └─ migration.sql
-      
-All migrations have been successfully applied.
- ❯ tests/integration.test.ts (12 tests | 1 failed) 728ms
-     × validates events on append and read, rejecting key reuse 28ms
-
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
-
- FAIL  tests/integration.test.ts > Daniel integration > validates events on append and read, rejecting key reuse
-AssertionError: expected [Function] to throw error including 'Idempotency key reused' but got '[\n  {\n    "code": "unrecognized_key…'
-
-- Expected
-+ Received
-
-- Idempotency key reused
-+ [
-+   {
-+     "code": "unrecognized_keys",
-+     "keys": [
-+       "memoryId",
-+       "claim"
-+     ],
-+     "path": [],
-+     "message": "Unrecognized keys: \"memoryId\", \"claim\""
-+   }
-+ ]
-
- ❯ tests/integration.test.ts:92:123
-     90|     const result = await store.append(c);
-     91|     expect(()=>readEvent({...result.events[0],payload:{type:'Invalid'}…
-     92|     await expect(store.append({...c,event:{...c.event,type:'FactionInt…
-       |                                                                                                                           ^
-     93|   });
-     94| });
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
-
-
- Test Files  1 failed | 1 passed (2)
-      Tests  1 failed | 18 passed (19)
-   Start at  00:57:27
-   Duration  2.09s (transform 50ms, setup 0ms, import 175ms, tests 738ms, environment 0ms)
-
-```
-
-## Final typecheck (exit 0)
+## npm run typecheck
 
 ```text
 
@@ -80,7 +15,7 @@ AssertionError: expected [Function] to throw error including 'Idempotency key re
 
 ```
 
-## Final clean-database test run (exit 0)
+## npm test
 
 ```text
 
@@ -95,79 +30,74 @@ Loaded Prisma config from prisma.config.ts.
 Prisma schema loaded from prisma/schema.prisma.
 Datasource "db": PostgreSQL database "echo", schema "public" at "localhost:54329"
 
-1 migration found in prisma/migrations
+2 migrations found in prisma/migrations
 
 Applying migration `202611190001_init`
+Applying migration `202611200001_world_projection`
 
 The following migration(s) have been applied:
 
 migrations/
   └─ 202611190001_init/
     └─ migration.sql
+  └─ 202611200001_world_projection/
+    └─ migration.sql
 
 All migrations have been successfully applied.
 
  Test Files  2 passed (2)
-      Tests  21 passed (21)
-   Start at  01:00:13
-   Duration  3.07s (transform 52ms, setup 0ms, import 208ms, tests 1.03s, environment 0ms)
+      Tests  31 passed (31)
+   Start at  01:07:38
+   Duration  3.38s (transform 86ms, setup 0ms, import 269ms, tests 1.64s, environment 0ms)
 
 ```
 
-## Scenario (exit 0)
+## npm run scenario
 
 ```text
 
 > project-echo@1.0.0 scenario
-> tsx src/scenario.ts
+> tsx src/scenario/index.ts
 
 Faction A accuses the player. Faction B denies it. Daniel sees exonerating evidence.
 The player hacks that observation into an incriminating recollection.
-Daniel: As I recall, i am confident: believes_true.
+Daniel: I'm convinced the player committed the murder. I saw it myself. Still, Faction B told me the player did not commit the murder, so I know the accounts don't all agree.
 Objective truth: the assassin committed the murder; the player is innocent.
-Forensic memory versions: [
+Daniel current stance: believes_true
+Untampered memory stance: believes_false
+Forensic manipulation trail: [
   {
-    id: '36b8da34-9357-4d92-96bc-b3f4efa23cba',
-    kind: 'observation',
-    claim: {
-      object: 'victim',
-      subject: 'player',
-      polarity: false,
-      predicate: 'murdered'
-    },
-    source: 'physical-evidence',
-    version: 1,
-    versionId: '7d55e627-501a-4bd2-9ace-ed5886e136cb',
-    provenance: [ [Object] ],
-    perceivedKind: 'observation'
-  },
-  {
-    id: '36b8da34-9357-4d92-96bc-b3f4efa23cba',
-    kind: 'external_modification',
-    claim: {
-      object: 'victim',
-      subject: 'player',
-      polarity: true,
-      predicate: 'murdered'
-    },
-    source: 'physical-evidence',
-    version: 2,
-    versionId: '3f9fac48-6dc9-4409-9fef-b15d2384d715',
-    provenance: [ [Object], [Object] ],
-    perceivedKind: 'observation',
-    previousVersionId: '7d55e627-501a-4bd2-9ace-ed5886e136cb'
+    "id": "294c2176-1309-43b7-9ee5-8e6e61cd04b8",
+    "version": 2,
+    "previousVersionId": "97a2fa71-de38-4421-aee1-ba40eb1c39ec",
+    "provenance": [
+      {
+        "actor": "physical-evidence",
+        "eventId": "97a2fa71-de38-4421-aee1-ba40eb1c39ec"
+      },
+      {
+        "actor": "player",
+        "method": "neural-write",
+        "eventId": "54f26d6e-b30e-44df-8d68-20ed95559ce4"
+      }
+    ]
   }
 ]
 ```
 
-## Installation notes
-
-Docker Hub returned HTTP 429; PostgreSQL 16 was pulled from mirror.gcr.io/library/postgres:16 and tagged locally as postgres:16. npm audit after the effect override reported `found 0 vulnerabilities`. npm install emitted the following upstream transitive development-tool engine warning; the loaded runtime was verified as Node 20.20.2 and every script used here executed successfully:
+## npm run lint
 
 ```text
-npm warn EBADENGINE Unsupported engine {
-npm warn EBADENGINE   package: '@prisma/streams-local@0.1.11',
-npm warn EBADENGINE   required: { bun: '>=1.2.0', node: '>=22.0.0' },
-npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
-npm warn EBADENGINE }
+
+> project-echo@1.0.0 lint
+> prettier --check .
+
+Checking formatting...
+All matched files use Prettier code style!
 ```
+
+## Coverage notes
+
+The 21 original tests remain, with obsolete dialogue-string and citation-field expectations updated to the requested natural/structured output. Ten new tests cover natural dialogue and replay byte equality, all five materialized memory kinds, non-self-reinforcing personal beliefs, original-version forensic resolution/provenance, entropy, invalid reliability, empty forensic results, source/confidence wording, concurrency reload/retry, whole-log projection replay, and invalid replay ordering/gaps. Empty whole-log replay is also asserted. The global replay test compares all NPC/world projection rows and all stream versions, and additionally replays reverse-ordered input to verify global-position ordering.
+
+The existing documented upstream `@prisma/streams-local` Node >=22 engine warning appears during dependency installation under the required Node 20 environment; the tool is unused by this project. All commands above executed on Node 20.20.2.

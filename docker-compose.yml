@@ -5,10 +5,10 @@ services:
       POSTGRES_USER: echo
       POSTGRES_PASSWORD: echo
       POSTGRES_DB: echo
-    ports: ["127.0.0.1:54329:5432"]
-    volumes: ["echo_data:/var/lib/postgresql/data"]
+    ports: ['127.0.0.1:54329:5432']
+    volumes: ['echo_data:/var/lib/postgresql/data']
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U echo"]
+      test: ['CMD-SHELL', 'pg_isready -U echo']
       interval: 1s
       timeout: 5s
       retries: 30

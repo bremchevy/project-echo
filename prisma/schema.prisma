@@ -31,3 +31,9 @@ model NpcState {
   version Int
   @@map("npc_state")
 }
+model WorldState {
+  worldId String @id @map("world_id")
+  state Json
+  version Int
+  @@map("world_state")
+}
