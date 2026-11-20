@@ -1,0 +1,28 @@
+{
+  "name": "project-echo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=20.19 <21" },
+  "type": "module",
+  "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:migrate": "prisma migrate deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "scenario": "tsx src/scenario.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.10",
+    "zod": "^4.6.7"
+  },
+  "overrides": { "effect": "^3.22.5" },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "prisma": "^7.10.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.12"
+  }
+}
