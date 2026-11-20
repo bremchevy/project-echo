@@ -40,6 +40,63 @@ const command = (): Command => ({
   metadata: { actor: 'A' },
 });
 describe('Daniel integration', () => {
+  it('retires unsupported personal beliefs from access without deleting their history', async () => {
+    const memoryId = randomUUID();
+    const initial = await store.append({
+      ...command(),
+      event: {
+        type: 'ObservationRecorded',
+        memoryId,
+        claim: murder,
+        source: 'eyes',
+      },
+    });
+    const originalState = await store.state('Daniel');
+    const originalBeliefId = 'belief:' + propositionKey(murder);
+    const changedClaim = { ...murder, object: 'another-victim' };
+    const changed = await store.append({
+      ...command(),
+      expectedVersion: initial.events.at(-1)!.version,
+      event: {
+        type: 'MemoryModified',
+        memoryId,
+        claim: changedClaim,
+        actor: 'player',
+        method: 'hack',
+      },
+    });
+    const changedState = await store.state('Daniel');
+    expect(changedState.beliefs).not.toHaveProperty(propositionKey(murder));
+    expect(changedState.beliefMemories[originalBeliefId]).toEqual(
+      originalState.beliefMemories[originalBeliefId],
+    );
+    expect(
+      accessibleMemories(changedState)
+        .filter((memory) => memory.perceivedKind === 'belief')
+        .map((memory) => propositionKey(memory.claim)),
+    ).toEqual([propositionKey(changedClaim)]);
+    expect(await store.rebuildFromLog('Daniel')).toEqual(changedState);
+
+    await store.append({
+      ...command(),
+      expectedVersion: changed.events.at(-1)!.version,
+      event: {
+        type: 'MemoryModified',
+        memoryId,
+        claim: murder,
+        actor: 'player',
+        method: 'hack',
+      },
+    });
+    const restoredState = await store.state('Daniel');
+    expect(restoredState.beliefMemories[originalBeliefId]).toHaveLength(2);
+    expect(
+      accessibleMemories(restoredState)
+        .filter((memory) => memory.perceivedKind === 'belief')
+        .map((memory) => ({ id: memory.id, version: memory.version })),
+    ).toEqual([{ id: originalBeliefId, version: 2 }]);
+    expect(await store.rebuildFromLog('Daniel')).toEqual(restoredState);
+  });
   it('answers from hacked beliefs rather than objective truth', async () => {
     const scenario = await runScenario(store);
     expect(scenario.beforeHack.beliefs[propositionKey(murder)].stance).toBe(

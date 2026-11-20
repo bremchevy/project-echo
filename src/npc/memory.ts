@@ -1,5 +1,5 @@
 import type { Claim, DomainEvent } from '../events/schema.js';
-import type { Belief } from './belief-engine.js';
+import { propositionKey, type Belief } from './belief-engine.js';
 
 export type MemoryKind =
   | 'objective'
@@ -74,16 +74,23 @@ export function accessible(state: State): EvidenceMemory[] {
 
 /** Return current recollections and personal beliefs, with no hack provenance. */
 export function accessibleMemories(state: State) {
-  const beliefs = Object.values(state.beliefMemories).map((history) => {
-    const memory = history[history.length - 1];
-    return {
-      id: memory.id,
-      version: memory.version,
-      claim: memory.claim,
-      source: memory.source,
-      perceivedKind: memory.perceivedKind,
-    };
-  });
+  const beliefs = Object.values(state.beliefMemories)
+    .filter((history) =>
+      Object.hasOwn(
+        state.beliefs,
+        propositionKey(history[history.length - 1].claim),
+      ),
+    )
+    .map((history) => {
+      const memory = history[history.length - 1];
+      return {
+        id: memory.id,
+        version: memory.version,
+        claim: memory.claim,
+        source: memory.source,
+        perceivedKind: memory.perceivedKind,
+      };
+    });
   return [...accessible(state), ...beliefs].sort((left, right) =>
     left.id.localeCompare(right.id),
   );
