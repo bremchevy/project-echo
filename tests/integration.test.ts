@@ -40,6 +40,52 @@ const command = (): Command => ({
   metadata: { actor: 'A' },
 });
 describe('Daniel integration', () => {
+  it('deduplicates interrogation retries with an explicitly undefined optional seed', async () => {
+    const initial = await store.append(command());
+    const context = {
+      interrogatorId: 'detective',
+      question: propositionKey(murder),
+      seed: undefined,
+    };
+    const event = {
+      type: 'InterrogationConducted' as const,
+      context,
+      question: context.question,
+      answer: '',
+      citedMemoryIds: [],
+    };
+    const interrogation = {
+      ...command(),
+      expectedVersion: initial.events.at(-1)!.version,
+      event,
+    };
+    const first = await store.append(interrogation);
+    const state = await store.state('Daniel');
+    const eventCount = await database.event.count();
+    const retry = await store.append(interrogation);
+    expect(retry.duplicate).toBe(true);
+    expect(retry.events).toEqual(first.events);
+    const absentSeedRetry = await store.append({
+      ...interrogation,
+      event: {
+        ...event,
+        context: {
+          interrogatorId: context.interrogatorId,
+          question: context.question,
+        },
+      },
+    });
+    expect(absentSeedRetry.duplicate).toBe(true);
+    expect(absentSeedRetry.events).toEqual(first.events);
+    expect(await store.state('Daniel')).toEqual(state);
+    expect(await database.event.count()).toBe(eventCount);
+    await expect(
+      store.append({
+        ...interrogation,
+        event: { ...event, context: { ...context, seed: 'different' } },
+      }),
+    ).rejects.toThrow('Idempotency key reused');
+  });
   it('retires unsupported personal beliefs from access without deleting their history', async () => {
     const memoryId = randomUUID();
     const initial = await store.append({
